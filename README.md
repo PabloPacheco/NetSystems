@@ -243,15 +243,17 @@ This explicit decoupling provides both numerical robustness and conceptual clari
 
 ### Transported variable and advective property
 
-Let $ \phi $ denote the nodal scalar variable being transported (e.g., temperature). The advective transport is governed by the product of:
+Let $\phi$ denote the nodal scalar variable being transported (e.g., temperature). The advective transport is governed by the product of:
 
-* the **volumetric flow rate** $ Q_e $ on each element $ e $,
-* an **advective property** $ \gamma $, which multiplies the flow.
+* the **volumetric flow rate** $Q_e$ on each element $e$,
+* an **advective property** $\gamma$, which multiplies the flow.
 
 For thermal transport, for instance:
+
 $$
 \gamma = \rho c_p
 $$
+
 so that the advective flux represents an enthalpy flow.
 
 In the implementation, this property is defined **at nodes**, either as:
@@ -276,7 +278,8 @@ adv_coeff = abs(Q) * gamma_e
 
 ### Governing equation of an advective system
 
-For a node $ i $, the discrete advective balance can be written as:
+For a node $i$, the discrete advective balance can be written as:
+
 $$
 \sum_{e \in \mathcal{E}_i}
 |Q_e| \gamma_e  (\phi_i - \phi_{\text{up}}) = S_i
@@ -284,13 +287,13 @@ $$
 
 where:
 
-* $ \mathcal{E}_i $ is the set of elements connected to node $ i $,
-* $ \phi_{\text{up}} $ is the upstream nodal value according to the flow direction,
-* $ S_i $ represents an equivalent nodal source term.
+* $\mathcal{E}_i$ is the set of elements connected to node $i$,
+* $\phi_{\text{up}}$ is the upstream nodal value according to the flow direction,
+* $S_i$ represents an equivalent nodal source term.
 
 Enthalpy flow
 
-$$ \text{Flux} = Q_e \gamma_e (\phi_i - \phi_{\text{up}}) $$
+$$\text{Flux} = Q_e \gamma_e (\phi_i - \phi_{\text{up}})$$
 
 - $Q_e$ $\rightarrow$ flow rate
 - $\gamma_e$ $\rightarrow$ $\rho c_p$
@@ -300,7 +303,7 @@ $$ \text{Flux} = Q_e \gamma_e (\phi_i - \phi_{\text{up}}) $$
 
 ### Upwind discretization in the code
 
-The upwind direction is determined exclusively from the sign of the elemental flow rate $ Q_e $:
+The upwind direction is determined exclusively from the sign of the elemental flow rate $Q_e$:
 
 ```python
 if Q >= 0.0:
@@ -317,9 +320,10 @@ A[down, up]   -= adv_coeff
 ```
 
 This corresponds exactly to the discrete term
-$
+
+$$
 |Q_e| \gamma_e (\phi_{\text{down}} - \phi_{\text{up}})
-$.
+$$
 
 ---
 
@@ -408,9 +412,11 @@ if adv.initial_x is None:
 ```
 
 This corresponds to an initial condition:
-$
+
+$$
 \boldsymbol{\phi}^{(0)} = \phi_0
-$
+$$
+
 (e.g. uniform initial temperature).
 
 Similarly, the diffusive system is initialized if no previous solution is available:
@@ -453,7 +459,7 @@ finalize_solution(net, diffusive_system_name, res)
 This step updates:
 
 * nodal diffusive unknowns (e.g. heads),
-* elemental fluxes $ \mathbf{Q} $, stored as `diff.element_flux`.
+* elemental fluxes $\mathbf{Q}$, stored as `diff.element_flux`.
 
 ---
 
@@ -486,6 +492,7 @@ err = np.linalg.norm(T - T_old)
 ```
 
 which corresponds to:
+
 $$
 |\boldsymbol{\phi}^{k+1} - \boldsymbol{\phi}^{k}|_2 < \varepsilon
 $$
@@ -533,8 +540,8 @@ The `Network` class represents the **computational graph** on which all physical
 
 Mathematically, the network defines:
 
-* a set of nodes $ \mathcal{N} $,
-* a set of elements $ \mathcal{E} \subset \mathcal{N} \times \mathcal{N} $.
+* a set of nodes $\mathcal{N}$,
+* a set of elements $\mathcal{E} \subset \mathcal{N} \times \mathcal{N}$.
 
 All systems share this same discretization.
 
@@ -550,7 +557,8 @@ self.node_coordinates      # (n_nodes, dim)
 self.element_lengths
 ```
 
-Each element $ e $ connects two nodes $ (i, j) $, stored in `connectivity`. The element length is computed as:
+Each element $e$ connects two nodes $(i, j)$, stored in `connectivity`. The element length is computed as:
+
 $$
 L_e = |\mathbf{x}_j - \mathbf{x}_i|
 $$
@@ -626,9 +634,9 @@ A `System` represents a **discrete physical model** defined on the network. Each
 
 Formally, each system defines:
 
-* a nodal unknown $ \mathbf{x} $,
-* a nodal source term $ \mathbf{b} $,
-* a system matrix $ \mathbf{A} $.
+* a nodal unknown $\mathbf{x}$,
+* a nodal source term $\mathbf{b}$,
+* a system matrix $\mathbf{A}$.
 
 ---
 
@@ -642,6 +650,7 @@ self.initial_x
 ```
 
 These correspond to the linear (or linearized) system:
+
 $$
 \mathbf{A}\mathbf{x} = \mathbf{b}
 $$
@@ -706,7 +715,7 @@ self.nodal_gamma
 self.nodal_gamma_function
 ```
 
-This corresponds to quantities such as $ \rho c_p $ in thermal transport.
+This corresponds to quantities such as $\rho c_p$ in thermal transport.
 
 
 ---
@@ -720,6 +729,7 @@ fluid = System("fluid", system_type="diffusive")
 ```
 
 This system solves for **nodal hydraulic head**:
+
 $$
 \mathbf{h}
 $$
@@ -742,6 +752,7 @@ fluid.known_b_values = [Q_vol]
 ```
 
 which enforce:
+
 $$
 h_{15} = 0, \qquad q_0 = Q_{\text{vol}}
 $$
@@ -763,6 +774,7 @@ heat = System("heat", system_type="advective")
 ```
 
 This system solves for **nodal temperature**:
+
 $$
 \boldsymbol{T}
 $$
@@ -783,6 +795,7 @@ heat.known_x_values = [300]
 ```
 
 which enforces:
+
 $$
 T_0 = 300;\text{K}
 $$
@@ -794,6 +807,7 @@ heat.nodal_gamma_function = gamma_function_heat
 ```
 
 corresponding to (enthalpy flow):
+
 $$
 \gamma = \rho c_p
 $$
