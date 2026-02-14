@@ -97,7 +97,6 @@ These methods handle the nonlinear dependence through successive linearization a
 
 ## Applications
 
-The framework is particularly suited for:
 - Pipe network hydraulics (water distribution systems)
 - Thermal networks (district heating/cooling)
 - Coupled fluid-thermal simulations
@@ -107,47 +106,30 @@ The framework is particularly suited for:
 
 ## Overview
 
-NetSystems is a flexible and extensible Python framework for simulating complex, coupled physical systems. Built on a modular architecture, it enables modeling, solving, and analyzing multiple physical phenomena (fluid flow, heat transfer, diffusion, etc.) within arbitrary networks while maintaining clear separation between network topology and the governing physical systems.
+NetSystems is a Python code for simulating coupled physical systems. It enables modeling, solving, and analyzing multiple physical phenomena (fluid flow, heat transfer, diffusion, etc.) within arbitrary networks while maintaining separation between network topology and the governing physical systems.
 
-## Core Philosophy
-
-NetSystems emerges from the need to unify simulation of diverse physical phenomena under a common architecture. Instead of creating specific solvers for each problem, it provides a framework where:
-
-1. **The network is independent** of the physical phenomena occurring within it
-2. **Each system defines its own variables** (heads, temperatures, concentrations, etc.)
-3. **Couplings are explicitly established** by the user
-4. **Solution process control** remains in the user's hands
-
-## Key Features
+## Features
 
 ### Modular Architecture
 - **Network Class**: Represents physical topology (nodes, elements, connectivity, geometry)
 - **System Class**: Represents a physical phenomenon (fluid dynamics, thermal, chemical, etc.)
-- **Flexible Coupling**: Multiple systems can interact on the same network
-- **Add/Remove Systems**: Dynamically attach physical systems to the network
+- **Coupling**: Multiple systems can interact on the same network
 
-### Multi-Physics Coupling Capability
-- **Cross-System Dependencies**: Systems can read variables from other systems
-- **Custom Coupling Functions**: User-defined relationships between different physical phenomena
-- **Sequential Coupling**: Iterative solution of interdependent systems
-
-### Extensible System Design
+### System Design
 - **User-Defined Properties**: Define physical properties as functions of network state or system variables
 - **Element Conductance Functions**: General k-element calculation using full network state
 - **Nonlinear Relationships**: Complex dependencies between variables
 - **Thermophysical Properties**: Constant or state-dependent (temperature, pressure, concentration)
 
-### Advanced Solvers
+### Solvers
 - **Linear Solvers**: Iterative methods (CG, GMRES, BiCGStab) and direct methods
 - **Nonlinear Solvers**: Newton-Raphson, Newton-Krylov, least squares optimization
-- **Automatic Partitioning**: Efficient separation of known/unknown nodes
-- **Coupled System Solvers**: Sequential resolution of interdependent systems
 
 ### Physical System Types
 - **Diffusive Systems**: Pipe flow, diffusion processes, conduction
 - **Advective Systems**: Heat transfer, convective transport, species transport
 
-## Mathematical Flexibility
+## Generalized System
 
 NetSystems is built around the generalized system representation:
 
@@ -172,7 +154,6 @@ Users can define:
 3. **Set Properties**: Define element conductance and material properties
 4. **Establish Couplings**: Specify how systems interact
 5. **Solve**: Use built-in solvers or implement custom solution strategies
-6. **Analyze**: Access results (matplotlib)
 
 ## Illustrated Example: Highly Coupled Model
 
@@ -223,21 +204,11 @@ NetSystems seamlessly integrates with:
 - **Matplotlib/Pandas**: Visualization and data analysis
 - **Custom Libraries**: User-defined property databases
 
-
-
-
 ## Advective Nodal Systems
 
 ### General description
 
 An **advective system** models the transport of a nodal scalar quantity induced by a **previously computed flow field**, typically obtained as the solution of another physical system. In hydraulic and thermo–hydraulic networks, this formulation is used to describe the transport of **energy**, **enthalpy**, **concentration**, or other passive scalars once the **volumetric flow rate** is known.
-
-In the proposed framework, advective systems are solved in a **partitioned manner**:
-
-1. a diffusive (or hydraulic) system is solved first to compute the flow field,
-2. the resulting flow is then used as input data for the assembly and solution of the advective system.
-
-This explicit decoupling provides both numerical robustness and conceptual clarity, while allowing different physical models to interact through shared variables.
 
 ---
 
@@ -368,16 +339,6 @@ This procedure is implemented in `solve_advective_system`.
 
 ---
 
-### Role in coupled simulations
-
-Within a **sequentially coupled solver**, the advective system:
-
-* **does not compute the flow**,
-* **uses the flow** obtained from a diffusive or hydraulic system,
-* updates a transported variable that may, in turn, affect material properties or source terms in subsequent iterations.
-
-
-
 ## Sequential Solution of Coupled Diffusive–Advective Systems
 
 ### Overview of the coupling strategy
@@ -386,13 +347,6 @@ The function `solve_coupled_sequential` implements a **sequential (staggered) co
 
 1. a **diffusive system** (e.g. hydraulic head and flow),
 2. an **advective system** (e.g. thermal transport).
-
-The key assumption is that **advection depends on the flow**, while the flow may depend (directly or indirectly) on the advected variable through material properties. As a result, the coupled problem is solved iteratively by alternating between both systems until convergence is achieved.
-
-The solution order is fixed:
-
-* the **diffusive system is solved first**,
-* its resulting elemental flux is passed to the **advective system**.
 
 ---
 
@@ -456,10 +410,7 @@ After convergence, the solution is finalized:
 finalize_solution(net, diffusive_system_name, res)
 ```
 
-This step updates:
-
-* nodal diffusive unknowns (e.g. heads),
-* elemental fluxes $\mathbf{Q}$, stored as `diff.element_flux`.
+This step updates nodal diffusive unknowns (e.g. heads), and elemental fluxes $\mathbf{Q}$, stored as `diff.element_flux`.
 
 ---
 
@@ -475,14 +426,6 @@ solve_advective_system(
 )
 ```
 
-The solution is stored in:
-
-```python
-adv.x
-```
-
----
-
 ### Convergence criterion
 
 After the advective solve, convergence is assessed using the norm of the change in the transported variable:
@@ -497,28 +440,10 @@ $$
 |\boldsymbol{\phi}^{k+1} - \boldsymbol{\phi}^{k}|_2 < \varepsilon
 $$
 
-If the tolerance is satisfied:
 
-```python
-if err < tol:
-    break
-```
+## Abstractions: `Network` and `System`
 
-the coupled iteration terminates.
-
-The iteration counter is updated:
-
-```python
-net.iteration += 1
-```
-
-allowing material properties or source terms to depend on the iteration index.
-
-
-
-## Core Abstractions: `Network` and `System`
-
-The framework is built around two fundamental abstractions:
+The framework is built around two abstractions:
 
 * the **`Network`**, which represents the discrete spatial domain (nodes, elements, topology),
 * the **`System`**, which represents a physical model defined on that network.
@@ -557,25 +482,6 @@ self.node_coordinates      # (n_nodes, dim)
 self.element_lengths
 ```
 
-Each element $e$ connects two nodes $(i, j)$, stored in `connectivity`. The element length is computed as:
-
-$$
-L_e = |\mathbf{x}_j - \mathbf{x}_i|
-$$
-
-which is implemented in the method of the class Network:
-
-```python
-def calculate_element_lengths(self):
-    for e in range(self.n_elements):
-        i, j = self.connectivity[e].astype(int)
-        self.element_lengths[e] = np.linalg.norm(
-            self.node_coordinates[j] - self.node_coordinates[i]
-        )
-```
-
----
-
 ### System registry and access
 
 The network stores all physical systems in a dictionary:
@@ -589,19 +495,6 @@ Systems are added via:
 ```python
 net.add_system(system)
 ```
-
-which also creates a **back-reference**:
-
-```python
-system.network = self
-```
-
-This bidirectional link allows:
-
-* systems to query network data (geometry, other variables),
-* the network to retrieve variables from systems.
-
----
 
 ### Unified variable access
 
@@ -649,34 +542,6 @@ self.A    # system matrix
 self.initial_x
 ```
 
-These correspond to the linear (or linearized) system:
-
-$$
-\mathbf{A}\mathbf{x} = \mathbf{b}
-$$
-
-`initial_x` is used to initialize iterative or coupled solvers.
-
----
-
-### Physical metadata
-
-```python
-self.x_name
-self.b_name
-self.element_variable_name
-```
-
-These attributes define **semantic names** for:
-
-* the nodal unknown (e.g. `"nodal_head"`, `"temperature"`),
-* the nodal source (e.g. `"nodal_flow"`, `"heat"`),
-* the element-wise variable (e.g. `"flow_rate"`).
-
-This enables system-agnostic access through the network.
-
----
-
 ### Boundary conditions
 
 ```python
@@ -706,7 +571,7 @@ self.element_conductance_function
 These represent **element-level constitutive coefficients**, which may be:
 
 * constant,
-* or computed dynamically from the network state.
+* or computed from the network state.
 
 For advective systems, the transported quantity is weighted by a **nodal advective property**:
 
@@ -834,14 +699,5 @@ net.add_system(heat)
 At this point, both systems share the same topology and geometry.
 
 
----
-
-## General design logic
-
-The combined `Network`–`System` design achieves:
-
-* **Separation of concerns** (geometry vs physics),
-* **Coupling through shared variables**,
-* **Extensibility** to new physics without modifying existing solvers,
 
 
